@@ -1,14 +1,12 @@
 var express = require('express');
-var path = require('path');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var ibmdb = require('ibm_db');
 
+env = JSON.parse(process.env.VCAP_SERVICES);
+var nosqlUrl = env["cloudantNoSQLDB"][0]["credentials"]["url"];
 
-if (process.env.VCAP_SERVICES) {
-    env = JSON.parse(process.env.VCAP_SERVICES);
-}
+var nano = require('nano')(nosqlUrl);
+
 
 var credentials = env["sqldb"][0]["credentials"];
 var dsnString = "DRIVER={DB2};DATABASE=" + credentials.db + ";UID=" + credentials.username + ";PWD=" +
@@ -94,6 +92,48 @@ app.post('/findEmployee', function (req, res){
             });
         }
     });
+});
+
+app.post('/nosql', function (req, res){
+    if(req.body.clear) {
+        nano.db.destroy('employees', function (err) {
+            if (err) res.send({success: false, reason: "can't destroy table :" + err});
+            else {
+                nano.db.create('employees', function (err) {
+                    if (err) res.send({success: false, reason: "can't create database :" + err});
+                    else res.send({success: true, reason: "successfully restarted schema"});
+                });
+            }
+        });
+    } else {
+        var employees = nano.use('employees');
+        employees.list(function (err, data) {
+            if (err) res.send({success: false, reason: "failed to get all employees" + err});
+            else res.send({success: true, data: data});
+        });
+    }
+});
+
+app.post('/nosql/addEmployee', function (req, res) {
+    var name = req.body.name;
+    var id = req.body.id;
+    var department = req.body.department;
+    var salary = req.body.salary;
+
+    var employees = nano.use('employees');
+
+    employees.insert({name: name, salary: salary, department: department}, id, function (err, data) {
+        if (err) res.send({success: false, reason: "can't add employee :" + err});
+        else res.send({success: true, data: data});
+    });
+});
+
+app.post('/nosql/removeEmployee', function (req, res) {
+    var id = req.body.id;
+
+    var employees = nano.use('employees');
+
+    employees.
 });
 
 app.listen(process.env.VCAP_APP_PORT);
