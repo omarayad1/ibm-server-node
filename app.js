@@ -33,34 +33,65 @@ app.post('/', function(req, res) {
             }
         });
     } else {
-        ibmdb.open(dsnString, function(err, conn){
+        ibmdb.open(dsnString, function (err, conn){
             if (err) res.send({success: false, reason: "can't connect to the database server :" + err});
             else {
                 var sql = "SELECT * FROM EMPLOYEES;"
-                conn.query(sql, function(err, data){
-                    if (err) res.send({success: false, reason: "can't execute sql query :" + err })
-                    else {
-                        res.send({success: true, data: data})
-                    }
+                conn.query(sql, function (err, data){
+                    if (err) res.send({success: false, reason: "can't execute sql query :" + err });
+                    else res.send({success: true, data: data});
                 });
             }
         });
     }
 });
 
-app.post('/addEmployee', function(req, res){
+app.post('/addEmployee', function (req, res){
     var name = req.body.name;
-    var id = req.body.id;
+    var empno = req.body.id;
     var department = req.body.department;
     var salary = req.body.salary;
 
-    var sql = "INSERT INTO EMPLOYEES (NAME,DEPARTMENT,SALARY,EMPNO) VALUES ('" + name + "','" + department + "','" + salary.toString() + "','" + id.toString() + "');";
-
+    var sql = "INSERT INTO EMPLOYEES (NAME,DEPARTMENT,SALARY,EMPNO) VALUES ('" + name + "','" + department + "'," + salary + "," + empno + ");";
     ibmdb.open(dsnString, function(err, conn){
         if (err) res.send({success: false, reason: "can't connect to the database server :" + err});
         else {
-            conn.querySync(sql);
-            res.send({success: true, data: {name: name, id: id, department: department, salary: salary}});
+            conn.query(sql, function(err){
+                if (err) res.send({success: false, reason: "can't add employee :" + err});
+                else res.send({success: true, data: {name: name, id: empno, department: department, salary: salary}});
+            });
+        }
+    });
+});
+
+app.post('/removeEmployee', function (req, res){
+    var id = req.body.id;
+
+    var sql = "DELETE FROM EMPLOYEES WHERE EMPNO= " + id + ";";
+
+    ibmdb.open(dsnString, function (err, conn){
+        if (err) res.send({success: false, reason: "can't connect to the database server :" + err});
+        else {
+            conn.query(sql, function(err){
+                if (err) res.send({success: false, reason: "can't remove employee :" + err});
+                else res.send({success: true, id: id});
+            });
+        }
+    });
+});
+
+app.post('/findEmployee', function (req, res){
+    var id = req.body.id;
+
+    var sql = "SELECT * FROM EMPLOYEES WHERE EMPNO= " + id + ";";
+
+    ibmdb.open(dsnString, function (err, conn){
+        if (err)  res.send({success: false, reason: "can't connect to the database server :" + err});
+        else {
+            conn.query(sql, function (err, data) {
+                if (err) res.send({success: false, reason: "can't retrieve employee :" + err});
+                else res.send({success: true, data: data});
+            });
         }
     });
 });
