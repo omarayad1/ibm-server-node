@@ -133,7 +133,38 @@ app.post('/nosql/removeEmployee', function (req, res) {
 
     var employees = nano.use('employees');
 
-    employees.
+    employees.get(id, {rev_info: true}, function(err, data) {
+        if (err) res.send({success: false, reason: "cant retrieve employee :" + err});
+        else {
+            var rev = data._rev
+            employees.destroy(id, rev, function (err, data) {
+                if (err) res.send({success: false, reason: "can't remove employee :" + err});
+                else res.send({success: true, data: data});
+            });
+        }
+    });
+});
+
+app.post('/nosql/findEmployee', function (req, res) {
+    var id = req.body.id;
+
+    var employees = nano.use('employees');
+
+    employees.get(id, function (err, data) {
+        if (err) res.send({success: false, reason: "can't retrieve employee"});
+        else {
+            data.EMPNO = data._id;
+            data.NAME = data.name;
+            data.DEPARTMENT = data.department;
+            data.SALARY = data.salary;
+            delete data._id;
+            delete data.name;
+            delete data.department;
+            delete data.salary;
+            delete data._rev;
+            res.send({success: true, data: [data]});
+        }
+    });
 });
 
 app.listen(process.env.VCAP_APP_PORT);
